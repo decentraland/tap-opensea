@@ -8,6 +8,7 @@ from singer_sdk.helpers.jsonpath import extract_jsonpath
 from singer_sdk.streams import RESTStream
 from tap_opensea.auth import openseaAuthenticator
 from datetime import datetime, timedelta, date, time, timezone
+import backoff
 
 SCHEMAS_DIR = Path(__file__).parent / Path("./schemas")
 
@@ -116,5 +117,5 @@ class openseaStream(RESTStream):
                     "\\n", "\n"
                 )
             )
-        logging.debug("Response received successfully.")
+        self.logger.debug("Response received successfully.")
         return response
