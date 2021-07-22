@@ -45,13 +45,14 @@ class openseaStream(RESTStream):
         return last_offset + self.limit_rows
 
 
+    def get_records(self, context: Optional[dict]) -> Iterable[Dict[str, Any]]:
+        """Return a generator of row-type dictionary objects.
 
-    def get_url_params(
-        self, context: Optional[dict], next_page_token: Optional[Any]
-    ) -> Dict[str, Any]:
-        """Return a dictionary of values to be used in URL parameterization."""
-        
+        Each row emitted should be a dictionary of property names to their values.
+        """
+
         state = self.get_context_state(context)
+        collection = context.get('collection')
         signpost = datetime.combine(date.today(), time()).replace(tzinfo=timezone.utc)
         start_key_str = state.get('last_end_key')
         if start_key_str:
@@ -63,7 +64,26 @@ class openseaStream(RESTStream):
         if end_key > signpost:
             end_key = signpost
         
+        state['last_start_key'] = start_key.strftime("%Y-%m-%dT%H:%M:%S")
         state['last_end_key'] = end_key.strftime("%Y-%m-%dT%H:%M:%S")
+
+        self.logger.warning(f"Using start: {state['last_start_key']} and end: {state['last_end_key']} for collection {collection}")
+
+        for row in self.request_records(context):
+            row = self.post_process(row, context)
+            yield row
+
+
+
+    def get_url_params(
+        self, context: Optional[dict], next_page_token: Optional[Any]
+    ) -> Dict[str, Any]:
+        """Return a dictionary of values to be used in URL parameterization."""
+        
+        state = self.get_context_state(context)
+        start_key = cast(datetime, pendulum.parse(state.get('last_start_key')))
+        end_key = cast(datetime, pendulum.parse(state.get('last_end_key')))
+        
 
         start_ts = start_key.timestamp()
         end_ts = end_key.timestamp()
