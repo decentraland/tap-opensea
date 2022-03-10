@@ -17,7 +17,6 @@ class openseaStream(RESTStream):
     """opensea stream class."""
 
     url_base = "https://api.opensea.io/api/v1"
-    limit_rows = 300
     
     @property
     def authenticator(self) -> openseaAuthenticator:
@@ -32,81 +31,42 @@ class openseaStream(RESTStream):
             headers["User-Agent"] = self.config.get("user_agent")
         return headers
 
-    def get_next_page_token(
-        self, response: requests.Response, previous_token: Optional[Any]
-    ) -> Optional[Any]:
-        """Return a token for identifying next page or None if no more pages."""
-        length_results = sum(1 for r in extract_jsonpath(self.records_jsonpath, input=response.json()))
-        last_offset = previous_token or 0
-
-        if length_results < self.limit_rows or length_results == 0:
-            return None
-
-        return last_offset + self.limit_rows
-
-
-    def get_records(self, context: Optional[dict]) -> Iterable[Dict[str, Any]]:
-        """Return a generator of row-type dictionary objects.
-
-        Each row emitted should be a dictionary of property names to their values.
-        """
-
-        state = self.get_context_state(context)
-        collection = context.get('collection')
-        signpost = datetime.combine(date.today(), time()).replace(tzinfo=timezone.utc)
-        start_key_str = state.get('last_end_key')
-        if start_key_str:
-            start_key = cast(datetime, pendulum.parse(start_key_str))
-        else:
-            start_key = datetime(year=2018, month=1, day=1, tzinfo=timezone.utc)
-
-        end_key = start_key + timedelta(days=30)
-        if end_key > signpost:
-            end_key = signpost
-        
-        state['last_start_key'] = start_key.strftime("%Y-%m-%dT%H:%M:%S")
-        state['last_end_key'] = end_key.strftime("%Y-%m-%dT%H:%M:%S")
-
-        self.logger.warning(f"Using start: {state['last_start_key']} and end: {state['last_end_key']} for collection {collection}")
-
-        for row in self.request_records(context):
-            row = self.post_process(row, context)
-            yield row
-
-
-
     def get_url_params(
         self, context: Optional[dict], next_page_token: Optional[Any]
     ) -> Dict[str, Any]:
         """Return a dictionary of values to be used in URL parameterization."""
         
         state = self.get_context_state(context)
-        start_key = cast(datetime, pendulum.parse(state.get('last_start_key')))
-        end_key = cast(datetime, pendulum.parse(state.get('last_end_key')))
+        signpost = datetime.combine(date.today(), time()).replace(tzinfo=timezone.utc).timestamp()
         
-
-        start_ts = start_key.timestamp()
-        end_ts = end_key.timestamp()
-        offset = next_page_token or 0
-
         params: dict = {
            "only_opensea": "true",
-           "offset": str(offset),
-           "limit": str(self.limit_rows),
            "collection_slug": context['collection'],
            "event_type": "successful",
-           "occurred_after": str(start_ts),
-           "occurred_before": str(end_ts)
+           "occurred_before": str(signpost)
         }
+
+        # Cursor
+        if next_page_token is not None:
+            state['cursor_key'] = next_page_token
+            cursor = next_page_token
+        else:
+            cursor = state.get('cursor_key')
+
+        if cursor:
+            params["cursor"] = cursor
+            self.logger.debug(f"Using cursor {cursor}")
+        else:
+            self.logger.debug(f"No cursor")
         return params
 
     
     @backoff.on_exception(
         backoff.expo,
         (requests.exceptions.RequestException),
-        max_tries=5,
-        giveup=lambda e: e.response is not None and 400 <= e.response.status_code < 500 and e.respone.status_code != 429,
-        factor=2,
+        max_tries=10,
+        giveup=lambda e: False,
+        factor=3,
     )
     def _request_with_backoff(
         self, prepared_request, context: Optional[dict]
