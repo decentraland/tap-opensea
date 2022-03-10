@@ -5,8 +5,6 @@ plugins:
   extractors:
   - name: tap-opensea
     namespace: tap_opensea
-    # TODO: To test using Meltano, replace with absolute path
-    #       to the tap-opensea.sh script:
     executable: ./tap-opensea.sh
     capabilities:
     - state

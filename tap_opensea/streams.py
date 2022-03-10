@@ -19,10 +19,10 @@ class OrdersStream(openseaStream):
     path = "/events"
     primary_keys = ["id"]
     records_jsonpath = "$.asset_events[*]"
+    next_page_token_jsonpath = "$.next"
 
     @property
     def partitions(self):
-        """Return a new authenticator object."""
         return [{'collection': c} for c in self.config['collections'].split(',')]
 
     def transform_asset(self, asset):
