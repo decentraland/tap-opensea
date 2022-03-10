@@ -64,9 +64,9 @@ class openseaStream(RESTStream):
     @backoff.on_exception(
         backoff.expo,
         (requests.exceptions.RequestException),
-        max_tries=5,
+        max_tries=10,
         giveup=lambda e: False,
-        factor=2,
+        factor=3,
     )
     def _request_with_backoff(
         self, prepared_request, context: Optional[dict]
