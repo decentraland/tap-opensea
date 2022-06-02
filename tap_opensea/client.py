@@ -55,9 +55,9 @@ class openseaStream(RESTStream):
 
         if cursor:
             params["cursor"] = cursor
-            self.logger.debug(f"Using cursor {cursor}")
+            self.logger.warning(f"Using cursor {cursor}")
         else:
-            self.logger.debug(f"No cursor")
+            self.logger.warning(f"No cursor")
         return params
 
     
