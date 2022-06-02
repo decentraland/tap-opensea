@@ -48,28 +48,32 @@ class OrdersStream(openseaStream):
 
         # Payment
         payment = row.get('payment_token')
-        newrow['payment_symbol'] = payment.get('symbol')
-        newrow['payment_amount_eth'] = payment.get('eth_price')
-        newrow['payment_amount_usd'] = payment.get('usd_price')
+        if payment:
+            newrow['payment_symbol'] = payment.get('symbol')
+            newrow['payment_amount_eth'] = payment.get('eth_price')
+            newrow['payment_amount_usd'] = payment.get('usd_price')
 
         # Seller
         seller = row.get('seller')
-        newrow['seller_address'] = seller.get('address')
-        seller_user = seller.get('user')
-        if seller_user:
-            newrow['seller_username'] = seller_user.get('username')
+        if seller:
+            newrow['seller_address'] = seller.get('address')
+            seller_user = seller.get('user')
+            if seller_user:
+                newrow['seller_username'] = seller_user.get('username')
 
         # Buyer
         buyer = row.get('winner_account')
-        newrow['buyer_address'] = buyer.get('address')
-        buyer_user = buyer.get('user')
-        if buyer_user:
-            newrow['buyer_username'] = buyer_user.get('username')
+        if buyer:
+            newrow['buyer_address'] = buyer.get('address')
+            buyer_user = buyer.get('user')
+            if buyer_user:
+                newrow['buyer_username'] = buyer_user.get('username')
 
         # Transaction
         transaction = row.get('transaction')
-        newrow['timestamp'] = transaction.get('timestamp')
-        newrow['transaction_hash'] = transaction.get('transaction_hash')
+        if transaction:
+            newrow['timestamp'] = transaction.get('timestamp')
+            newrow['transaction_hash'] = transaction.get('transaction_hash')
 
         # Asset
         newrow['assets'] = []
