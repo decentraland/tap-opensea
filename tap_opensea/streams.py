@@ -50,8 +50,8 @@ class OrdersStream(openseaStream):
         payment = row.get('payment_token')
         if payment:
             newrow['payment_symbol'] = payment.get('symbol')
-            newrow['payment_amount_eth'] = payment.get('eth_price')
-            newrow['payment_amount_usd'] = payment.get('usd_price')
+            newrow['payment_amount_eth'] = str(payment.get('eth_price'))
+            newrow['payment_amount_usd'] = str(payment.get('usd_price'))
 
         # Seller
         seller = row.get('seller')
@@ -72,7 +72,7 @@ class OrdersStream(openseaStream):
         # Transaction
         transaction = row.get('transaction')
         if transaction:
-            newrow['timestamp'] = transaction.get('timestamp')
+            newrow['timestamp'] = int(transaction.get('timestamp'))
             newrow['transaction_hash'] = transaction.get('transaction_hash')
 
         # Asset
