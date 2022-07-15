@@ -47,15 +47,14 @@ class openseaStream(RESTStream):
         }
 
         # Cursor
-        if next_page_token is not None:
-            state['cursor_key'] = next_page_token
-            cursor = next_page_token
-        else:
-            cursor = state.get('cursor_key')
+        if next_page_token is None:
+            last_date = state.get('last_date')
+            if last_date:
+                params["ocurred_after"] = last_date
 
-        if cursor:
-            params["cursor"] = cursor
-            self.logger.warning(f"Using cursor {cursor}")
+        if next_page_token:
+            params["cursor"] = next_page_token
+            self.logger.warning(f"Using cursor {next_page_token}")
         else:
             self.logger.warning(f"No cursor")
         return params
@@ -99,3 +98,21 @@ class openseaStream(RESTStream):
             )
         self.logger.debug("Response received successfully.")
         return response
+
+
+    def get_records(self, context: Optional[dict]) -> Iterable[Dict[str, Any]]:
+        state = self.get_context_state(context)
+        for record in self.request_records(context):
+            transformed_record = self.post_process(record, context)
+            if transformed_record is None:
+                continue
+            record_timestamp=transformed_record.get('timestamp')
+            if record_timestamp:
+                recorded_date = state.get('last_date')
+                last_date = datetime.strptime(record_timestamp[0:10], "%Y-%m-%d").timestamp()
+                if recorded_date:
+                    if recorded_date < last_date:
+                        state['last_date'] = last_date
+                else:
+                    state['last_date'] = last_date
+            yield transformed_record
