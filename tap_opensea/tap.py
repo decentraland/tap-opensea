@@ -23,9 +23,9 @@ class Tapopensea(Tap):
 
     # TODO: Update this section with the actual config values you expect:
     config_jsonschema = th.PropertiesList(
-        th.Property("auth_token", th.StringType),
+        th.Property("auth_token", th.StringType, default="dc4ae74fb9774c6aab4ff185bb746939"),
         th.Property("api_url", th.StringType, default="https://api.opensea.io/api/v1"),
-        th.Property("collections", th.StringType)
+        th.Property("collections", th.StringType, default="dcl-names,decentraland-wearables,decentraland")
     ).to_dict()
 
     def discover_streams(self) -> List[Stream]:
