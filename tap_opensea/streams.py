@@ -72,7 +72,7 @@ class OrdersStream(openseaStream):
         # Transaction
         transaction = row.get('transaction')
         if transaction:
-            newrow['timestamp'] = int(transaction.get('timestamp'))
+            newrow['timestamp'] = transaction.get('timestamp')
             newrow['transaction_hash'] = transaction.get('transaction_hash')
 
         # Asset
