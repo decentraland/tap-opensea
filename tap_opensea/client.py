@@ -50,7 +50,7 @@ class openseaStream(RESTStream):
         if next_page_token is None:
             last_date = state.get('last_date')
             if last_date:
-                params["ocurred_after"] = last_date
+                params["occurred_after"] = last_date
 
         if next_page_token:
             params["cursor"] = next_page_token
