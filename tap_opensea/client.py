@@ -109,10 +109,12 @@ class openseaStream(RESTStream):
             record_timestamp=transformed_record.get('timestamp')
             if record_timestamp:
                 recorded_date = state.get('last_date')
-                last_date = int(datetime.strptime(record_timestamp[0:10], "%Y-%m-%d").timestamp())
-                if recorded_date:
-                    if recorded_date < last_date:
+                last_date_timestamp = datetime.strptime(record_timestamp[0:10], "%Y-%m-%d").timestamp()
+                if last_date_timestamp:
+                    last_date = int(last_date_timestamp)
+                    if recorded_date:
+                        if recorded_date < last_date:
+                            state['last_date'] = last_date
+                    else:
                         state['last_date'] = last_date
-                else:
-                    state['last_date'] = last_date
             yield transformed_record
