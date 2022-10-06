@@ -44,7 +44,8 @@ class OrdersStream(openseaStream):
         # Core
         newrow['id'] = str(row['id'])
         newrow['auction_type'] = row['auction_type']
-        newrow['quantity'] = int(row['quantity'])
+        if 'quantity' in row:
+            newrow['quantity'] = int(row.get('quantity'))
 
         # Payment
         payment = row.get('payment_token')
