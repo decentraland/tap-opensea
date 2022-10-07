@@ -45,7 +45,8 @@ class OrdersStream(openseaStream):
         newrow['id'] = str(row['id'])
         newrow['auction_type'] = row['auction_type']
         if 'quantity' in row:
-            newrow['quantity'] = int(row.get('quantity'))
+            if row.get('quantity') is not None:
+                newrow['quantity'] = int(row.get('quantity'))
 
         # Payment
         payment = row.get('payment_token')
