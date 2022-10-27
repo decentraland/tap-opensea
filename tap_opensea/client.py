@@ -60,7 +60,7 @@ class openseaStream(RESTStream):
         return params
 
     def backoff_max_tries(self):
-        return 10
+        return 20
 
 
     def get_records(self, context: Optional[dict]) -> Iterable[Dict[str, Any]]:
