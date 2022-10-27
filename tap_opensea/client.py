@@ -59,45 +59,8 @@ class openseaStream(RESTStream):
             self.logger.warning(f"No cursor")
         return params
 
-    
-    @backoff.on_exception(
-        backoff.expo,
-        (requests.exceptions.RequestException),
-        max_tries=15,
-        giveup=lambda e: False,
-        factor=6
-    )
-    def _request_with_backoff(
-        self, prepared_request, context: Optional[dict]
-    ) -> requests.Response:
-        response = self.requests_session.send(prepared_request)
-        if self._LOG_REQUEST_METRICS:
-            extra_tags = {}
-            if self._LOG_REQUEST_METRIC_URLS:
-                extra_tags["url"] = cast(str, prepared_request.path_url)
-            self._write_request_duration_log(
-                endpoint=self.path,
-                response=response,
-                context=context,
-                extra_tags=extra_tags,
-            )
-        if response.status_code in [401, 403]:
-            self.logger.info("Failed request for {}".format(prepared_request.url))
-            self.logger.info(
-                f"Reason: {response.status_code} - {str(response.content)}"
-            )
-            raise RuntimeError(
-                "Requested resource was unauthorized, forbidden, or not found."
-            )
-        elif response.status_code >= 400:
-            raise RuntimeError(
-                f"Error making request to API: {prepared_request.url} "
-                f"[{response.status_code} - {str(response.content)}]".replace(
-                    "\\n", "\n"
-                )
-            )
-        self.logger.debug("Response received successfully.")
-        return response
+    def backoff_max_tries(self):
+        return 10
 
 
     def get_records(self, context: Optional[dict]) -> Iterable[Dict[str, Any]]:
@@ -118,29 +81,3 @@ class openseaStream(RESTStream):
                     else:
                         state['last_date'] = last_date
             yield transformed_record
-
-    def request_records(self, context: Optional[dict]) -> Iterable[dict]:
-        """Request records from REST endpoint(s), returning response records.
-        If pagination is detected, pages will be recursed automatically.
-        """
-        next_page_token: Any = None
-        finished = False
-        while not finished:
-            prepared_request = self.prepare_request(
-                context, next_page_token=next_page_token
-            )
-            resp = self._request_with_backoff(prepared_request, context)
-            for row in self.parse_response(resp):
-                yield row
-            previous_token = copy.deepcopy(next_page_token)
-            next_page_token = self.get_next_page_token(
-                response=resp, previous_token=previous_token
-            )
-            if next_page_token and next_page_token == previous_token:
-                raise RuntimeError(
-                    f"Loop detected in pagination. "
-                    f"Pagination token {next_page_token} is identical to prior token."
-                )
-            time.sleep(0.5)
-            # Cycle until get_next_page_token() no longer returns a value
-            finished = not 
