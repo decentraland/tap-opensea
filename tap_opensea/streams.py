@@ -44,6 +44,7 @@ class OrdersStream(openseaStream):
         # Core
         newrow['id'] = str(row['id'])
         newrow['auction_type'] = row['auction_type']
+        newrow['total_price'] = str(row['total_price'])
         if 'quantity' in row:
             if row.get('quantity') is not None:
                 newrow['quantity'] = int(row.get('quantity'))
@@ -54,6 +55,7 @@ class OrdersStream(openseaStream):
             newrow['payment_symbol'] = payment.get('symbol')
             newrow['payment_amount_eth'] = str(payment.get('eth_price'))
             newrow['payment_amount_usd'] = str(payment.get('usd_price'))
+            newrow['decimals'] = str(payment.get('decimals'))
 
         # Seller
         seller = row.get('seller')
@@ -109,5 +111,8 @@ class OrdersStream(openseaStream):
             th.Property("collection", th.StringType),
             th.Property("name", th.StringType),
         ))),
+        th.Property("total_price", th.StringType),
+        th.Property("decimals", th.StringType),
     ).to_dict()
+
 
