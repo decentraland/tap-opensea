@@ -1,23 +1,24 @@
 """REST client handling, including openseaStream base class."""
 
-import requests, pendulum, time
+
+import time
 from pathlib import Path
-from typing import Any, Dict, Optional, Union, List, Iterable, cast
+from typing import Any, Dict, Optional, Iterable
 
 from singer_sdk.helpers.jsonpath import extract_jsonpath
 from singer_sdk.streams import RESTStream
 from tap_opensea.auth import openseaAuthenticator
 from datetime import datetime, timedelta, date, time, timezone
-import backoff
+
 
 SCHEMAS_DIR = Path(__file__).parent / Path("./schemas")
 
 
-class openseaStream(RESTStream):
+class OpenseaStream(RESTStream):
     """opensea stream class."""
 
-    url_base = "https://api.opensea.io/api/v1"
-    
+    url_base = "https://api.opensea.io/api/v2"
+
     @property
     def authenticator(self) -> openseaAuthenticator:
         """Return a new authenticator object."""
@@ -35,25 +36,24 @@ class openseaStream(RESTStream):
         self, context: Optional[dict], next_page_token: Optional[Any]
     ) -> Dict[str, Any]:
         """Return a dictionary of values to be used in URL parameterization."""
-        
+
         state = self.get_context_state(context)
-        signpost = datetime.combine(date.today(), time()).replace(tzinfo=timezone.utc).timestamp()
-        
+        signpost = datetime.combine(date.today(), time()).replace(
+            tzinfo=timezone.utc).timestamp()
+
         params: dict = {
-           "only_opensea": "true",
-           "collection_slug": context['collection'],
-           "event_type": "successful",
-           "occurred_before": str(signpost)
+            "event_type": "sale",
+            "before": str(signpost)
         }
 
         # Cursor
         if next_page_token is None:
             last_date = state.get('last_date')
             if last_date:
-                params["occurred_after"] = last_date
+                params["after"] = last_date
 
         if next_page_token:
-            params["cursor"] = next_page_token
+            params["next"] = next_page_token
             self.logger.warning(f"Using cursor {next_page_token}")
         else:
             self.logger.warning(f"No cursor")
@@ -62,22 +62,15 @@ class openseaStream(RESTStream):
     def backoff_max_tries(self):
         return 20
 
-
     def get_records(self, context: Optional[dict]) -> Iterable[Dict[str, Any]]:
         state = self.get_context_state(context)
         for record in self.request_records(context):
             transformed_record = self.post_process(record, context)
             if transformed_record is None:
                 continue
-            record_timestamp=transformed_record.get('timestamp')
-            if record_timestamp:
-                recorded_date = state.get('last_date')
-                last_date_timestamp = datetime.strptime(record_timestamp[0:10], "%Y-%m-%d").timestamp()
-                if last_date_timestamp:
-                    last_date = int(last_date_timestamp)
-                    if recorded_date:
-                        if recorded_date < last_date:
-                            state['last_date'] = last_date
-                    else:
-                        state['last_date'] = last_date
+
+            # Update state with last date
+            if 'timestamp' in transformed_record:
+                state['last_date'] = transformed_record['timestamp']
+
             yield transformed_record
