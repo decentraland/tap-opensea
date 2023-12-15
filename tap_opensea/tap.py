@@ -7,13 +7,14 @@ from singer_sdk import typing as th  # JSON schema typing helpers
 
 # TODO: Import your custom stream types here:
 from tap_opensea.streams import (
-    openseaStream,
     OrdersStream,
 )
 # TODO: Compile a list of custom stream types here
 #       OR rewrite discover_streams() below with your custom logic.
+
+
 STREAM_TYPES = [
-    OrdersStream,
+    OrdersStream
 ]
 
 
@@ -24,8 +25,8 @@ class Tapopensea(Tap):
     # TODO: Update this section with the actual config values you expect:
     config_jsonschema = th.PropertiesList(
         th.Property("auth_token", th.StringType),
-        th.Property("api_url", th.StringType, default="https://api.opensea.io/api/v1"),
-        th.Property("collections", th.StringType)
+        th.Property("api_url", th.StringType, default="https://api.opensea.io/api/v2"),
+        th.Property("collections", th.StringType, default="dcl-names")
     ).to_dict()
 
     def discover_streams(self) -> List[Stream]:

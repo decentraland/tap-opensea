@@ -5,19 +5,16 @@ from typing import Any, Dict, Optional, Union, List, Iterable
 
 from singer_sdk import typing as th  # JSON Schema typing helpers
 import json
-from tap_opensea.client import openseaStream
+from tap_opensea.client import OpenseaStream
 
-# TODO: Delete this is if not using json files for schema definition
+
 SCHEMAS_DIR = Path(__file__).parent / Path("./schemas")
-# TODO: - Override `UsersStream` and `GroupsStream` with your own stream definition.
-#       - Copy-paste as many times as needed to create multiple stream types.
 
 
-class OrdersStream(openseaStream):
-    """Orders from OpenSea"""
-    name = "opensea_orders"
-    path = "/events"
-    primary_keys = ["id"]
+class OrdersStream(OpenseaStream):
+    name = "opensea_orders_v2"
+    path = "/events/collection"
+    primary_keys = ["transaction_hash"]
     records_jsonpath = "$.asset_events[*]"
     next_page_token_jsonpath = "$.next"
 
@@ -25,94 +22,65 @@ class OrdersStream(openseaStream):
     def partitions(self):
         return [{'collection': c} for c in self.config['collections'].split(',')]
 
-    def transform_asset(self, asset):
-        outAsset = {}
-        collection = asset.get('collection')
-        outAsset['id'] = str(asset.get('id'))
-        outAsset['collection'] = collection.get('slug')
-        outAsset['name'] = asset.get('name')
-        outAsset['external_link'] = asset.get('external_link')
-        outAsset['permalink'] = asset.get('permalink')
+    def get_url(self, context: Optional[dict] = None) -> str:
+        """Return the API URL."""
+        return f"{self.url_base}{self.path}/{context['collection']}"
 
-        return outAsset
-
-    
     def post_process(self, row: dict, context: Optional[dict] = None) -> dict:
         """Convert parcels into psv and adds block number"""
         newrow = {}
-        
+
         # Core
-        newrow['id'] = str(row['id'])
-        newrow['auction_type'] = row['auction_type']
-        newrow['total_price'] = str(row['total_price'])
+        newrow['transaction_hash'] = str(row['transaction'])
         if 'quantity' in row:
             if row.get('quantity') is not None:
                 newrow['quantity'] = int(row.get('quantity'))
+        newrow['chain'] = row['chain']
+
+        # NFT
+        nft = row.get('nft')
+
+        if nft is not None:
+            newrow['nft_address'] = nft.get('contract')
+            newrow['nft_collection_name'] = nft.get('collection')
+            newrow['nft_identifier'] = nft.get('identifier')
+            newrow['nft_name'] = nft.get('name')
+            newrow['nft_description'] = nft.get('description')
+            newrow['nft_metadata_url'] = nft.get('metadata_url')
+            newrow['nft_opensea_url'] = nft.get('opensea_url')
 
         # Payment
-        payment = row.get('payment_token')
+        payment = row.get('payment')
         if payment:
             newrow['payment_symbol'] = payment.get('symbol')
-            newrow['payment_amount_eth'] = str(payment.get('eth_price'))
-            newrow['payment_amount_usd'] = str(payment.get('usd_price'))
+            newrow['payment_token_address'] = payment.get('token_address')
+            newrow['payment_amount'] = str(payment.get('quantity'))
             newrow['decimals'] = str(payment.get('decimals'))
 
         # Seller
-        seller = row.get('seller')
-        if seller:
-            newrow['seller_address'] = seller.get('address')
-            seller_user = seller.get('user')
-            if seller_user:
-                newrow['seller_username'] = seller_user.get('username')
+        newrow['seller_address'] = row.get('seller')
+        newrow['buyer_address'] = row.get('buyer')
 
-        # Buyer
-        buyer = row.get('winner_account')
-        if buyer:
-            newrow['buyer_address'] = buyer.get('address')
-            buyer_user = buyer.get('user')
-            if buyer_user:
-                newrow['buyer_username'] = buyer_user.get('username')
-
-        # Transaction
-        transaction = row.get('transaction')
-        if transaction:
-            newrow['timestamp'] = transaction.get('timestamp')
-            newrow['transaction_hash'] = transaction.get('transaction_hash')
-
-        # Asset
-        newrow['assets'] = []
-        asset_bundle = row.get('asset_bundle')
-        if asset_bundle is not None:
-            assets = asset_bundle.get('assets')
-            for asset in assets:
-                newrow['assets'].append(self.transform_asset(asset))
-        else:
-            asset = row.get('asset')
-            newrow['assets'].append(self.transform_asset(asset))
+        newrow['timestamp'] = str(row.get('event_timestamp'))
 
         return newrow
 
     schema = th.PropertiesList(
-        th.Property("id", th.StringType),
         th.Property("transaction_hash", th.StringType),
-        th.Property("timestamp", th.DateTimeType),
-        th.Property("auction_type", th.StringType),
-        th.Property("payment_symbol", th.StringType),
-        th.Property("payment_amount_eth", th.StringType),
-        th.Property("payment_amount_usd", th.StringType),
         th.Property("quantity", th.IntegerType),
-        th.Property("seller_address", th.StringType),
-        th.Property("seller_username", th.StringType),
-        th.Property("buyer_address", th.StringType),
-        th.Property("buyer_username", th.StringType),
-        th.Property("assets", th.ArrayType(th.ObjectType(
-            th.Property("id", th.StringType),
-            th.Property("token_id", th.StringType),
-            th.Property("collection", th.StringType),
-            th.Property("name", th.StringType),
-        ))),
-        th.Property("total_price", th.StringType),
+        th.Property("chain", th.StringType),
+        th.Property("nft_address", th.StringType),
+        th.Property("nft_collection_name", th.StringType),
+        th.Property("nft_identifier", th.StringType),
+        th.Property("nft_name", th.StringType),
+        th.Property("nft_description", th.StringType),
+        th.Property("nft_metadata_url", th.StringType),
+        th.Property("nft_opensea_url", th.StringType),
+        th.Property("payment_symbol", th.StringType),
+        th.Property("payment_token_address", th.StringType),
+        th.Property("payment_amount", th.StringType),
         th.Property("decimals", th.StringType),
+        th.Property("seller_address", th.StringType),
+        th.Property("buyer_address", th.StringType),
+        th.Property("timestamp", th.StringType)
     ).to_dict()
-
-
