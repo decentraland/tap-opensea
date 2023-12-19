@@ -41,9 +41,16 @@ class OpenseaStream(RESTStream):
         signpost = datetime.combine(date.today(), time()).replace(
             tzinfo=timezone.utc).timestamp()
 
+        # Get date from tap params
+        start_date = self.config.get("start_date")
+
+        # Turn date string into unix timestamp
+        start_date = datetime.strptime(start_date, "%Y-%m-%d")
+
         params: dict = {
             "event_type": "sale",
-            "before": str(signpost)
+            "before": str(signpost),
+            "after": start_date
         }
 
         # Cursor
