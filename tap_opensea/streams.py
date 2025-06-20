@@ -14,7 +14,7 @@ SCHEMAS_DIR = Path(__file__).parent / Path("./schemas")
 class OrdersStream(OpenseaStream):
     name = "opensea_orders_v2"
     path = "/events/collection"
-    primary_keys = ["transaction_hash"]
+    primary_keys = ["order_hash"]
     records_jsonpath = "$.asset_events[*]"
     next_page_token_jsonpath = "$.next"
 
