@@ -39,18 +39,18 @@ class OpenseaStream(RESTStream):
 
         state = self.get_context_state(context)
         signpost = datetime.combine(date.today(), time()).replace(
-            tzinfo=timezone.utc).timestamp()
+            tzinfo=timezone.utc)
 
         # Get date from tap params
         start_date = self.config.get("start_date")
 
         # Turn date string into unix timestamp
-        start_date = datetime.strptime(start_date, "%Y-%m-%d")
+        start_date = datetime.strptime(start_date, "%Y-%m-%d").replace(tzinfo=timezone.utc)
 
         params: dict = {
             "event_type": "sale",
-            "before": str(signpost),
-            "after": start_date
+            "before": int(signpost.timestamp()),  # Convert to Unix timestamp in seconds
+            "after": int(start_date.timestamp())  # Convert to Unix timestamp in seconds
         }
 
         # Cursor

@@ -35,7 +35,12 @@ class OrdersStream(OpenseaStream):
         newrow['event_type'] = row.get('event_type')
         newrow['order_hash'] = row.get('order_hash')
         newrow['chain'] = row['chain']
-        newrow['protocol_address'] = row['protocol_address']
+        
+        if 'protocol_address' in row:
+            newrow['protocol_address'] = row['protocol_address']
+        else:
+            newrow['protocol_address'] = None
+
         newrow['closing_date'] = row.get('closing_date')
         
         if 'quantity' in row:
